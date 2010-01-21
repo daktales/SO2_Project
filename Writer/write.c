@@ -16,7 +16,7 @@
 #define MAX_CT 5 /*	Max CT	*/
 #define S_WT 20 /*	Step for new write_dev Thread	*/
 #define MAX_WT 5 /*	Max WT	*/
-#define DEV "mydev"
+#define DEV "/dev/mydev"
 
 #define DEB 1 /*	Enable stdout output	*/
 
@@ -101,7 +101,7 @@ static void *write_dev2(void *name){
 			data = wbuf_ext(&ebuffer);
 			count = wbuf_count(&ebuffer);
 			if(DEB){fprintf(stdout,"Write %d: %s\n\tRemain %d value pending\n",myname,data,count);}
-			write(fd,data,strlen(data));
+			write(fd,data,strlen(data));  /*	write to device	*/
 			pthread_mutex_unlock(&emutex);
 		}
 	}
@@ -143,7 +143,7 @@ int main (int argc, char *argv[]){
 	int tmp_nwt = 0;
 	int tmp_todo = 0;
 
-	
+	int status = 0;
 	
 	pthread_t* cthreads;
 	pthread_t* ethreads;
@@ -163,8 +163,11 @@ int main (int argc, char *argv[]){
 
 	/* Open Device	*/
 
-	fd = open("dev/mydev",O_WRONLY);
-	
+	status = fd = open(DEV,O_WRONLY);
+	if (status == -1){
+		fprintf(stderr,"Error opening device %s\n",DEV);
+		return -1;
+	}
 
 	/*	Automagically choose best number of thread	*/
 	tmp_nct = (tmp_todo/S_CT)+1;
@@ -223,6 +226,13 @@ int main (int argc, char *argv[]){
 	/*	Waiting for write_dev Thread	*/
 	for(i=0;i<nwt;i++){
 		pthread_join(wthreads[i], NULL);
+	}
+
+	/*	Close device	*/
+
+	status = close(fd);
+	if (status == -1){
+		fprintf(stderr,"Errore closing device %s\n",DEV);
 	}
 
 	/* Cleanup */

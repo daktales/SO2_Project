@@ -84,12 +84,18 @@ static void my_module_exit(void)
 	printk(KERN_DEBUG "*Device Exit\n");
 }
 
+int device_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num, unsigned long ioctl_param){
+	return 0;
+}
+
+
 static struct file_operations my_fops = {
   .owner =        THIS_MODULE,
   .read =         my_read,
   .open =         my_open,
   .release =      my_close,
   .write =        my_write,
+  .ioctl=         my_ioctl,
 };
 
 static struct miscdevice my_device = {
