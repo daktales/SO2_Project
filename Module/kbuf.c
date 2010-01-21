@@ -1,23 +1,35 @@
-#include <stdlib.h>
-#include <linux/slab.h>
+#include <linux/module.h>
 #include "kbuf.h"
 
-#define MAX_NODE 10;
+#define DEF_NODE 10;
 
 int kb_init (struct kb *kbuf){
 	kbuf->head = NULL;
 	kbuf->tail = NULL;
 	kbuf->count = 0;
+	kbuf->maxnode = DEF_NODE;
+	return 0;
+}
+
+int kb_isfull (struct kb *kbuf){
+	if (kbuf->count == kbuf->maxnode){
+		return 1;
+	}
+	return 0;
+}
+
+int kb_isempty (struct kb *kbuf){
+	if (kbuf->head == NULL){
+		return 1;
+	}
 	return 0;
 }
 
 int kb_push (char *data,struct kb *kbuf){
-
 	struct kb_node *node = kmalloc(sizeof(struct kb_node),GFP_USER);
 
 	node->data = data;
 	node->next = NULL;
-	
 	if (kbuf->head == NULL){
 		kbuf->head = node;
 	} else {
@@ -30,9 +42,7 @@ int kb_push (char *data,struct kb *kbuf){
 }
 
 int kb_pop(char *data,struct kb *kbuf){
-	
 	struct kb_node *node;
-	char* ret_value;
 
 	node = kbuf->head;
 	kbuf->head = node->next;

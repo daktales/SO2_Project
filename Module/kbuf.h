@@ -10,9 +10,14 @@ struct kb{
 	struct kb_node *head;
 	struct kb_node *tail;
 	short count;
+	short maxnode;
 };
 
 int kb_init (struct kb *kbuf);
+
+int kb_isfull (struct kb *kbuf);
+
+int kb_isempty (struct kb *kbuf);
 
 int kb_push (char *data,struct kb *kbuf);
 

@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <semaphore.h>
 #include <time.h>
+#include <fcntl.h>
+#include <string.h>
+
 #include "buffer.h"
 #include "fun.h"
 
@@ -13,7 +16,7 @@
 #define MAX_CT 5 /*	Max CT	*/
 #define S_WT 20 /*	Step for new write_dev Thread	*/
 #define MAX_WT 5 /*	Max WT	*/
-
+#define DEV "mydev"
 
 #define DEB 1 /*	Enable stdout output	*/
 
@@ -24,6 +27,8 @@ static pthread_mutex_t rmutex;
 
 static wbuf ebuffer; /*	FIFO for elaborated data	*/
 static pthread_mutex_t emutex;
+
+static int fd; /* Variable for device	*/
 
 /* Threads */
 
@@ -79,6 +84,31 @@ static void *write_dev(void *name){
 	return NULL;
 }
 
+static void *write_dev2(void *name){
+	int stop = 0;
+	char* data;
+	int count;
+	int myname = (int) name;
+	while(!stop){
+		pthread_mutex_lock(&emutex);
+		while((ebuffer.head==NULL)&&(!ebuffer.done)){
+			pthread_cond_wait(&ebuffer.cv, &emutex);
+		}
+		if((ebuffer.done)&&(ebuffer.head==NULL)){
+			pthread_mutex_unlock(&emutex);
+			stop = 1;
+		} else {
+			data = wbuf_ext(&ebuffer);
+			count = wbuf_count(&ebuffer);
+			if(DEB){fprintf(stdout,"Write %d: %s\n\tRemain %d value pending\n",myname,data,count);}
+			write(fd,data,strlen(data));
+			pthread_mutex_unlock(&emutex);
+		}
+	}
+	return NULL;
+}
+
+
 static void *create_data(void *name){
 	int stop = 0;
 	int tmp_todo;
@@ -113,6 +143,8 @@ int main (int argc, char *argv[]){
 	int tmp_nwt = 0;
 	int tmp_todo = 0;
 
+	
+	
 	pthread_t* cthreads;
 	pthread_t* ethreads;
 	pthread_t* wthreads;
@@ -128,6 +160,11 @@ int main (int argc, char *argv[]){
 		fprintf(stderr,"Syntax: %s <number of information>\n",argv[0]);
 		return -1;
 	}
+
+	/* Open Device	*/
+
+	fd = open("dev/mydev",O_WRONLY);
+	
 
 	/*	Automagically choose best number of thread	*/
 	tmp_nct = (tmp_todo/S_CT)+1;
