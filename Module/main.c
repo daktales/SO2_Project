@@ -27,6 +27,7 @@ static struct mutex kb_mutex; /*	Buffer's mutex	*/
 
 static int my_open(struct inode *inode, struct file *file)
 {
+	return 0;
 }
 
 static int my_close(struct inode *inode, struct file *file)
@@ -38,7 +39,9 @@ static int my_close(struct inode *inode, struct file *file)
 
 ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 {
+	return 0;
 }
+
 static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, loff_t *ppos)
 {
 	int res, err;
@@ -54,7 +57,7 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 		res = -EFAULT;
 		goto w_end;
 	}
-	res = kb_push(value,&kbuffer);
+	res = kb_push(value,&kb_fifo);
 
 	w_end:
 	mutex_unlock(&kb_mutex);
@@ -72,7 +75,7 @@ static int my_module_init(void)
 	}
 	printk(KERN_DEBUG "**Device Init\n");
 	mutex_init(&kb_mutex);
-	kb_init(&kbuffer);
+	kb_init(&kb_fifo);
 	count = 0;
 	return res;
 }
@@ -84,7 +87,7 @@ static void my_module_exit(void)
 	printk(KERN_DEBUG "*Device Exit\n");
 }
 
-int device_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num, unsigned long ioctl_param){
+int my_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num, unsigned long ioctl_param){
 	return 0;
 }
 

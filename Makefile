@@ -1,4 +1,4 @@
-KERNEL_DIR ?= /lib/modules/`uname -r`/build
+KERNEL_DIR ?= /usr/src/linux-`uname -r`
 
 obj-m = test.o
 
