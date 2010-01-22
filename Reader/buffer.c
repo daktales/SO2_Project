@@ -46,8 +46,7 @@ char* wbuf_ext(wbuf* mybuffer){
 		mybuffer->tail = NULL;
 	};
 	mybuffer->count--;
-	ret_value = malloc(strlen(ext_wbe->data)+1);
-	//ret_value = ext_wbe->data;
+	ret_value = malloc(strlen(ext_wbe->data)+1); 
 	strcpy(ret_value,ext_wbe->data);
 	free(ext_wbe); /* destroy extracted element	*/
 	return ret_value;
