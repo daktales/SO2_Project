@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "fun.h"
 
-#define MAXL 40 /*	Max lenght of generater word (null-terminated string)	*/
+#define MAXL 40 /*	Max lenght of generater word (null-terminated string [0..39]+\0)	*/
 
 /* General purpose */
 
@@ -32,4 +32,5 @@ void to_lower(char* letters){
 		i++;
 			}
 }
+
 

@@ -43,14 +43,19 @@ int kb_push (char *data,struct kb *kbuf){
 
 int kb_pop(char *data,struct kb *kbuf){
 	struct kb_node *node;
-
+	//char *tmp;
+	if (kbuf->head == NULL){	/* if empty	*/
+		return 1;
+	}
 	node = kbuf->head;
 	kbuf->head = node->next;
 	if (kbuf->head == NULL){ /*	if last member	*/
 		kbuf->tail = NULL;
 	};
 	kbuf->count--;
-	data = node->data;
+	//data = kmalloc(strlen(node->data)+1,GFP_KERNEL);
+	//data = node->data;
+	strcpy(data,node->data);
 	kfree(node); /* destroy extracted element	*/
 	
 

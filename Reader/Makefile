@@ -1,5 +1,5 @@
 CC=gcc
-LDFLAGS=-pthread
+LDFLAGS=-pthread -static
 CFLAGS=-c -Wall -Wextra -pedantic
 SOURCES=read.c fun.c buffer.c
 OBJECTS=$(SOURCES:.c=.o)

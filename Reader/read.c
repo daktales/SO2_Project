@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <semaphore.h>
 #include <time.h>
+#include <fcntl.h>
+
 #include "buffer.h"
 #include "fun.h"
 
@@ -14,6 +16,7 @@
 #define S_PT 20 /*	Step for print_data Thread	*/
 #define MAX_PT 5 /*	Max PT	*/
 
+#define DEV "/dev/mydev"
 
 #define DEB 1 /*	Enable stdout output	*/
 
@@ -24,6 +27,8 @@ static pthread_mutex_t rmutex;
 
 static wbuf ebuffer; /*	FIFO for elaborated data	*/
 static pthread_mutex_t emutex;
+
+static int fd; /* Variable for device	*/
 
 /* Threads */
 
@@ -43,12 +48,14 @@ static void *elaborate_data(void *name){
 		} else {
 			data = wbuf_ext(&rbuffer);
 			count = wbuf_count(&rbuffer);
+			fprintf(stdout,"\tRead %s from Rbuffer\n",data);
 			pthread_mutex_unlock(&rmutex);
 			usleep(2000000);
 			to_upper(data);
 			pthread_mutex_lock(&emutex);
 			wbuf_ins(data,&ebuffer);
-			if (DEB){fprintf(stdout,"Elaborate %d: %s\n\tRemain %d value pending\n",myname,data,count);};
+			fprintf(stdout,"\tInsert %s into Ebuffer\n",data);
+			//if (DEB){fprintf(stdout,"Elaborate %d: %s\n\tRemain %d value pending\n",myname,data,count);};
 			pthread_cond_signal(&ebuffer.cv);
 			pthread_mutex_unlock(&emutex);
 		}
@@ -99,6 +106,32 @@ static void *read_dev(void *name){
 	return NULL;
 }
 
+static void *read_dev2(void *name){
+	int stop = 0;
+	int tmp_todo;
+	int myname = (int) name;
+	char tmp[40];
+	while(!stop){
+		pthread_mutex_lock(&rmutex);
+		tmp_todo = rbuffer.todo--;
+		if(DEB){fprintf(stderr,"Read %d, todo:%d\n",myname,tmp_todo);}
+		if (tmp_todo<=0){
+			stop = 1;
+		} else {
+			if (read(fd,tmp,40)){
+				fprintf(stderr,"Read from device failed");
+			} else {
+			wbuf_ins(tmp,&rbuffer);
+			fprintf(stdout,"\tInsert %s into buffer\n",tmp);
+			}
+			pthread_cond_signal(&rbuffer.cv);
+		}
+		pthread_mutex_unlock(&rmutex);
+		usleep(1000000);
+	}
+	return NULL;
+}
+
 
 /* Main */
 
@@ -112,6 +145,8 @@ int main (int argc, char *argv[]){
 	int tmp_net = 0;
 	int tmp_npt = 0;
 	int tmp_todo = 0;
+
+	int status = 0;
 
 	pthread_t* rthreads;
 	pthread_t* ethreads;
@@ -129,6 +164,15 @@ int main (int argc, char *argv[]){
 		return -1;
 	}
 
+	/* Open Device	*/
+
+	status = fd = open(DEV,O_RDONLY);
+	if (status == -1){
+		fprintf(stderr,"Error opening device %s\n",DEV);
+		return -1;
+	}
+	fprintf(stdout, "Device Opened\n");
+	
 	/*	Automagically choose best number of thread	*/
 	tmp_nrt = (tmp_todo/S_RT)+1;
 	tmp_net = (tmp_todo/S_ET)+1;
@@ -154,7 +198,7 @@ int main (int argc, char *argv[]){
 
 	/*	Creating Threads	*/
 	for(i=0;i<nrt;i++){
-		pthread_create(&rthreads[i], NULL, read_dev, (void *)i);
+		pthread_create(&rthreads[i], NULL, read_dev2, (void *)i);
 	}
 	for(i=0;i<net;i++){
 		pthread_create(&ethreads[i], NULL, elaborate_data, (void*)i);
@@ -188,6 +232,13 @@ int main (int argc, char *argv[]){
 		pthread_join(p_threads[i], NULL);
 	}
 
+	/*	Close device	*/
+
+	status = close(fd);
+	if (status == -1){
+		fprintf(stderr,"Errore closing device %s\n",DEV);
+	}
+	fprintf(stdout, "Device Closed\n");
 	/* Cleanup */
 
 	pthread_mutex_destroy(&rmutex);
