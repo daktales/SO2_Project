@@ -6,6 +6,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include "buffer.h"
 #include "fun.h"
@@ -62,29 +63,6 @@ static void *elaborate_data(void *name){
 }
 
 static void *write_dev(void *name){
-	int stop = 0;
-	char* data;
-	int count;
-	int myname = (int) name;
-	while(!stop){
-		pthread_mutex_lock(&emutex);
-		while((ebuffer.head==NULL)&&(!ebuffer.done)){
-			pthread_cond_wait(&ebuffer.cv, &emutex);
-		}
-		if((ebuffer.done)&&(ebuffer.head==NULL)){
-			pthread_mutex_unlock(&emutex);
-			stop = 1;
-		} else {
-			data = wbuf_ext(&ebuffer);
-			count = wbuf_count(&ebuffer);
-			if(DEB){fprintf(stdout,"Write %d: %s\n\tRemain %d value pending\n",myname,data,count);}
-			pthread_mutex_unlock(&emutex);
-		}
-	}
-	return NULL;
-}
-
-static void *write_dev2(void *name){
 	int stop = 0;
 	char* data;
 	int count;
@@ -203,7 +181,7 @@ int main (int argc, char *argv[]){
 		pthread_create(&ethreads[i], NULL, elaborate_data, (void*)i);
 	}
 	for(i=0;i<nwt;i++){
-		pthread_create(&wthreads[i], NULL, write_dev2, (void*)i);
+		pthread_create(&wthreads[i], NULL, write_dev, (void*)i);
 	}
 
 	/*	Closing */
@@ -230,7 +208,10 @@ int main (int argc, char *argv[]){
 	for(i=0;i<nwt;i++){
 		pthread_join(wthreads[i], NULL);
 	}
+	/* Say to device that i'm done	*/
 
+	write(fd,"",0);
+	
 	/*	Close device	*/
 
 	status = close(fd);

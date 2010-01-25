@@ -19,7 +19,9 @@ MODULE_DESCRIPTION("Sistemi Operativi 2 - Module");
 MODULE_LICENSE("GPL");
 
 static struct miscdevice my_device;
+
 static struct dc dev_control;
+static struct mutex dc_mutex;
 
 static struct kb kb_fifo; /*	Buffer fifo	*/
 static struct mutex kb_mutex; /*	Buffer's mutex	*/
@@ -103,6 +105,7 @@ static int my_module_init(void)
 	printk(KERN_DEBUG "**Device Init\n");
 	mutex_init(&kb_mutex);
 	kb_init(&kb_fifo);
+	mutex_init(&dc_mutex);
 	ds_init(&dev_stat);
 	return res;
 }
@@ -110,11 +113,24 @@ static int my_module_init(void)
 static void my_module_exit(void)
 {
 	mutex_destroy(&kb_mutex);
+	mutex_destroy(&dc_mutex);
 	misc_deregister(&my_device);
 	printk(KERN_DEBUG "*Device Exit\n");
 }
 
 int my_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num, unsigned long ioctl_param){
+	switch(ioctl_num){
+		case WRITE_DONE:
+			mutex_lock(&dc_mutex);
+			dev_control->wdone = 1;
+			mutex_unlock(&dc_mutex);
+			break;
+		case READ_DONE:
+			mutex_lock(&dc_mutex);
+			dev_control->rdone = 1;
+			mutex_unlock(&dc_mutex);
+			break;
+		}
 	return 0;
 }
 
