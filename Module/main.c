@@ -6,18 +6,25 @@
 #include <linux/list.h> /*	Kernel List	*/
 #include <linux/mutex.h>
 #include <linux/kfifo.h>
+#include "main.h"
 #include "kbuf.h"
+#include "stat.h"
+
+
+
+
 
 MODULE_AUTHOR("Walter Da Col");
 MODULE_DESCRIPTION("Sistemi Operativi 2 - Module");
 MODULE_LICENSE("GPL");
 
 static struct miscdevice my_device;
+static struct dc dev_control;
 
 static struct kb kb_fifo; /*	Buffer fifo	*/
-
 static struct mutex kb_mutex; /*	Buffer's mutex	*/
 
+static struct ds dev_stat;
 
 static int my_open(struct inode *inode, struct file *file)
 {
@@ -39,20 +46,17 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 	mutex_lock(&kb_mutex);
 	value = kmalloc(dim,GFP_USER);
 	res = kb_pop(value,&kb_fifo);
-	printk(KERN_ERR "After kb_pop\n");
-	printk(KERN_ERR "print value: %s\n",value);
 	if (res){
 		res = 1;
 		goto r_end;
 	}
-	//len = strlen(*value)+1; /* strlen() do not count \0, so +1	*/
 	len = dim;
-	printk(KERN_ERR "After strlen: %d\n",len);
 	res = copy_to_user(buf,value,len);
 	if (res){
 		res = -EFAULT;
 		goto r_end;
 	}
+	printk(KERN_DEBUG "Read %d byte from fifo: %s\n",dim,value);
 	r_end:
 	mutex_unlock(&kb_mutex);
 	
@@ -64,22 +68,25 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 	int res, err;
 	char *value;
 
+	mutex_lock(&kb_mutex);
 	value = kmalloc(sizeof(char)*dim,GFP_KERNEL);
+	//wbyte[wbyte_index] = dim;
+	
 	if (value == NULL){
 		res = 1;
-		printk(KERN_ERR "Error in allocating value");
+		printk(KERN_ERR "**Error in allocating value");
 		goto w_end;
 	}
-	mutex_lock(&kb_mutex);
 	err = copy_from_user(value,buf,dim);
 	if (err){
 		res = -EFAULT;
-		printk(KERN_ERR "Error in copy_from_user");
+		printk(KERN_ERR "**Error in copy_from_user");
 		goto w_end;
 	}
 	res = kb_push(value,&kb_fifo);
-	printk(KERN_DEBUG "Write %d byte (remember \\0) into fifo: %s\n",dim,value);
+	printk(KERN_DEBUG "Write %d byte into fifo: %s\n",dim,value);
 	w_end:
+	kfree(value);
 	mutex_unlock(&kb_mutex);
 	return res;	
 }
@@ -96,6 +103,7 @@ static int my_module_init(void)
 	printk(KERN_DEBUG "**Device Init\n");
 	mutex_init(&kb_mutex);
 	kb_init(&kb_fifo);
+	ds_init(&dev_stat);
 	return res;
 }
 

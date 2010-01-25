@@ -14,10 +14,10 @@ description=
 run_cmd=
 
 [files]
-current_page=1
-FILE_NAME_0=0;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/buffer.c;0
+current_page=3
+FILE_NAME_0=1147;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/buffer.c;0
 FILE_NAME_1=441;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/buffer.h;0
-FILE_NAME_2=998;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/fun.c;0
-FILE_NAME_3=0;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/fun.h;0
-FILE_NAME_4=226;Make;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/Makefile;0
-FILE_NAME_5=2208;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/read.c;0
+FILE_NAME_2=1148;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/fun.c;0
+FILE_NAME_3=116;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/fun.h;0
+FILE_NAME_4=31;Make;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/Makefile;0
+FILE_NAME_5=1404;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Reader/read.c;0

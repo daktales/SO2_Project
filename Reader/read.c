@@ -11,8 +11,8 @@
 
 #define S_ET 5 /*	Step for new eleborate_data Thread	*/
 #define MAX_ET 10 /*	Max ET	*/
-#define S_RT 10 /*	Step for new read_dev Thread	*/
-#define MAX_RT 5 /*	Max RT	*/
+#define S_RT 1 /*	Step for new read_dev Thread	*/
+#define MAX_RT 2 /*	Max RT	*/
 #define S_PT 20 /*	Step for print_data Thread	*/
 #define MAX_PT 5 /*	Max PT	*/
 
@@ -119,7 +119,7 @@ static void *read_dev2(void *name){
 			stop = 1;
 		} else {
 			if (read(fd,tmp,40)){
-				fprintf(stderr,"Read from device failed");
+				fprintf(stderr,"Read from device failed\n");
 			} else {
 			wbuf_ins(tmp,&rbuffer);
 			fprintf(stdout,"\tInsert %s into buffer\n",tmp);

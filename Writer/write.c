@@ -15,7 +15,7 @@
 #define S_CT 10 /*	Step for new create_data Thread	*/
 #define MAX_CT 5 /*	Max CT	*/
 #define S_WT 1 /*	Step for new write_dev Thread	*/
-#define MAX_WT 1 /*	Max WT	*/
+#define MAX_WT 2 /*	Max WT	*/
 #define DEV "/dev/mydev"
 
 #define DEB 1 /*	Enable stdout output	*/
@@ -101,7 +101,7 @@ static void *write_dev2(void *name){
 			data = wbuf_ext(&ebuffer);
 			count = wbuf_count(&ebuffer);
 			if(DEB){fprintf(stdout,"Write %d: %s\n\tRemain %d value pending\n",myname,data,count);}
-			if (write(fd,data,strlen(data)+1)){  /*	write to device, strlen() do not count \0 so +1 is needed*/
+			while (write(fd,data,strlen(data)+1)){  /*	write to device, strlen() do not count \0 so +1 is needed*/
 				fprintf(stderr,"FAIL writing on device");
 			}
 			pthread_mutex_unlock(&emutex);
