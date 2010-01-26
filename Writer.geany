@@ -14,8 +14,8 @@ description=
 run_cmd=
 
 [files]
-current_page=2
-FILE_NAME_0=2577;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/write.c;0
+current_page=0
+FILE_NAME_0=4318;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/write.c;0
 FILE_NAME_1=61;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/buffer.c;0
 FILE_NAME_2=276;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/fun.c;0
 FILE_NAME_3=308;Make;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/Makefile;0

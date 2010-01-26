@@ -3,12 +3,16 @@
 
 
 struct ds {
-	int ds_list[10];
-	int ds_index;
+	int ds_dim;
+	int *ds_list[];
 };
 
-inline int ds_isfull(struct ds *ds_var);
+inline void ds_init(struct ds *ds_var,int dim);
 
-inline void ds_init(struct ds *ds_var);
+float ds_med(struct ds *ds_var);
+
+int ds_max(struct ds *ds_var);
+
+int ds_min(struct ds *ds_var);
 
 #endif

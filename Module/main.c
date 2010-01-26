@@ -28,6 +28,23 @@ static struct mutex kb_mutex; /*	Buffer's mutex	*/
 
 static struct ds dev_stat;
 
+static struct mutex write_mutex;
+static struct mutex read_mutex;
+
+inline static void set_wdone(struct dc *dc_var){
+	mutex_lock(&dc_mutex);
+	dc_var->wdone = 1;
+	printk(KERN_DEBUG "**Writer DONE\n");
+	mutex_unlock(&dc_mutex);
+}
+
+inline static void set_rdone(struct dc *dc_var){
+	mutex_lock(&dc_mutex);
+	dc_var->rdone = 1;
+	printk(KERN_DEBUG "**Reader DONE\n");
+	mutex_unlock(&dc_mutex);
+}
+
 static int my_open(struct inode *inode, struct file *file)
 {
 	return 0;
@@ -41,20 +58,24 @@ static int my_close(struct inode *inode, struct file *file)
 
 ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 {
-	int res,len;
+	int res;
 	char* value;
-	
-	
+
+	/* reader process has finished */
+	if (unlikely(dim == 0)){
+		set_rdone(&dev_control);
+		return 0;
+	}
+	/* Read */
 	mutex_lock(&kb_mutex);
 	value = kmalloc(dim,GFP_USER);
 	res = kb_pop(value,&kb_fifo);
-	if (res){
+	if (unlikely(res)){
 		res = 1;
 		goto r_end;
 	}
-	len = dim;
-	res = copy_to_user(buf,value,len);
-	if (res){
+	res = copy_to_user(buf,value,dim);
+	if (unlikely(res)){
 		res = -EFAULT;
 		goto r_end;
 	}
@@ -70,10 +91,13 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 	int res, err;
 	char *value;
 
+	if (unlikely(dim == 0)){
+		set_wdone(&dev_control);
+		return 0;
+	}
+	mutex_lock(&write_mutex);
 	mutex_lock(&kb_mutex);
 	value = kmalloc(sizeof(char)*dim,GFP_KERNEL);
-	//wbyte[wbyte_index] = dim;
-	
 	if (value == NULL){
 		res = 1;
 		printk(KERN_ERR "**Error in allocating value");
@@ -90,6 +114,7 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 	w_end:
 	kfree(value);
 	mutex_unlock(&kb_mutex);
+	mutex_unlock(&write_mutex);
 	return res;	
 }
 
@@ -106,7 +131,8 @@ static int my_module_init(void)
 	mutex_init(&kb_mutex);
 	kb_init(&kb_fifo);
 	mutex_init(&dc_mutex);
-	ds_init(&dev_stat);
+
+	mutex_init(&write_mutex);
 	return res;
 }
 
@@ -114,26 +140,10 @@ static void my_module_exit(void)
 {
 	mutex_destroy(&kb_mutex);
 	mutex_destroy(&dc_mutex);
+	mutex_destroy(&write_mutex);
 	misc_deregister(&my_device);
 	printk(KERN_DEBUG "*Device Exit\n");
 }
-
-int my_ioctl(struct inode *inode, struct file *file, unsigned int ioctl_num, unsigned long ioctl_param){
-	switch(ioctl_num){
-		case WRITE_DONE:
-			mutex_lock(&dc_mutex);
-			dev_control->wdone = 1;
-			mutex_unlock(&dc_mutex);
-			break;
-		case READ_DONE:
-			mutex_lock(&dc_mutex);
-			dev_control->rdone = 1;
-			mutex_unlock(&dc_mutex);
-			break;
-		}
-	return 0;
-}
-
 
 static struct file_operations my_fops = {
   .owner =        THIS_MODULE,
@@ -141,7 +151,6 @@ static struct file_operations my_fops = {
   .open =         my_open,
   .release =      my_close,
   .write =        my_write,
-  .ioctl=         my_ioctl,
 };
 
 static struct miscdevice my_device = {

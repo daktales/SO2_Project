@@ -210,7 +210,9 @@ int main (int argc, char *argv[]){
 	}
 	/* Say to device that i'm done	*/
 
-	write(fd,"",0);
+	while(write(fd,"0",1)){
+		fprintf(stderr,"Error sending \'done\' command\n");
+	}
 	
 	/*	Close device	*/
 
