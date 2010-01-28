@@ -12,11 +12,11 @@
 #include "fun.h"
 
 #define S_ET 5 /*	Step for new eleborate_data Thread	*/
-#define MAX_ET 2 /*	Max ET	*/
+#define MAX_ET 10 /*	Max ET	*/
 #define S_CT 10 /*	Step for new create_data Thread	*/
-#define MAX_CT 2 /*	Max CT	*/
-#define S_WT 1 /*	Step for new write_dev Thread	*/
-#define MAX_WT 2 /*	Max WT	*/
+#define MAX_CT 4 /*	Max CT	*/
+#define S_WT 10 /*	Step for new write_dev Thread	*/
+#define MAX_WT 4 /*	Max WT	*/
 #define DEV "/dev/mydev"
 
 #define DEB 1 /*	Enable stdout output	*/
@@ -61,12 +61,12 @@ static void *elaborate_data(void *name){
 		} else {
 			data = wbuf_ext(&rbuffer);
 			count = wbuf_count(&rbuffer);
+			if (DEB){fprintf(stdout,"ELABORATE T%d (todo:%d): %s\n",myname,count,data);}
 			pthread_mutex_unlock(&rmutex);
-			usleep(2000000);
+			usleep(4000000);
 			to_lower(data);
 			pthread_mutex_lock(&emutex);
 			wbuf_ins(data,&ebuffer);
-			if (DEB){fprintf(stdout,"ELABORATE T%d (todo:%d): %s\n",myname,count,data);}
 			pthread_cond_signal(&ebuffer.cv);
 			pthread_mutex_unlock(&emutex);
 		}
@@ -108,15 +108,15 @@ static void *create_data(void *name){
 	while(!stop){
 		pthread_mutex_lock(&rmutex);
 		tmp_todo = (write_loop) ? 1 : todo--;
-		if(DEB){fprintf(stderr,"CREATE T%d (todo: %d)\n",myname,tmp_todo);}
 		if (tmp_todo<=0){
 			stop = 1;
 		} else {
 			wbuf_ins(gen_data(),&rbuffer);
 			pthread_cond_signal(&rbuffer.cv);
+			if(DEB){fprintf(stderr,"CREATE T%d (todo: %d)\n",myname,tmp_todo);}
 		}
 		pthread_mutex_unlock(&rmutex);
-		usleep(1000000);
+		usleep(2000000);
 	}
 	return NULL;
 }
