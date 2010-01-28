@@ -20,30 +20,12 @@ MODULE_LICENSE("GPL");
 
 static struct miscdevice my_device;
 
-static struct dc dev_control;
-static struct mutex dc_mutex;
-
 static struct kb kb_fifo; /*	Buffer fifo	*/
 static struct mutex kb_mutex; /*	Buffer's mutex	*/
 
 static struct ds dev_stat;
 
-static struct mutex write_mutex;
-static struct mutex read_mutex;
 
-inline static void set_wdone(struct dc *dc_var){
-	mutex_lock(&dc_mutex);
-	dc_var->wdone = 1;
-	printk(KERN_DEBUG "**Writer DONE\n");
-	mutex_unlock(&dc_mutex);
-}
-
-inline static void set_rdone(struct dc *dc_var){
-	mutex_lock(&dc_mutex);
-	dc_var->rdone = 1;
-	printk(KERN_DEBUG "**Reader DONE\n");
-	mutex_unlock(&dc_mutex);
-}
 
 static int my_open(struct inode *inode, struct file *file)
 {
@@ -61,11 +43,6 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 	int res;
 	char* value;
 
-	/* reader process has finished */
-	if (unlikely(dim == 0)){
-		set_rdone(&dev_control);
-		return 0;
-	}
 	/* Read */
 	mutex_lock(&kb_mutex);
 	value = kmalloc(dim,GFP_USER);
@@ -91,11 +68,6 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 	int res, err;
 	char *value;
 
-	if (unlikely(dim == 0)){
-		set_wdone(&dev_control);
-		return 0;
-	}
-	mutex_lock(&write_mutex);
 	mutex_lock(&kb_mutex);
 	value = kmalloc(sizeof(char)*dim,GFP_KERNEL);
 	if (value == NULL){
@@ -114,7 +86,6 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 	w_end:
 	kfree(value);
 	mutex_unlock(&kb_mutex);
-	mutex_unlock(&write_mutex);
 	return res;	
 }
 
@@ -130,16 +101,12 @@ static int my_module_init(void)
 	printk(KERN_DEBUG "**Device Init\n");
 	mutex_init(&kb_mutex);
 	kb_init(&kb_fifo);
-	mutex_init(&dc_mutex);
-
-	mutex_init(&write_mutex);
 	return res;
 }
 
 static void my_module_exit(void)
 {
 	mutex_destroy(&kb_mutex);
-	mutex_destroy(&dc_mutex);
 	mutex_destroy(&write_mutex);
 	misc_deregister(&my_device);
 	printk(KERN_DEBUG "*Device Exit\n");

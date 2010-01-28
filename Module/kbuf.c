@@ -1,21 +1,10 @@
 #include <linux/module.h>
 #include "kbuf.h"
 
-#define DEF_NODE 10;
-
-
 inline int kb_init (struct kb *kbuf){
 	kbuf->head = NULL;
 	kbuf->tail = NULL;
 	kbuf->count = 0;
-	kbuf->maxnode = DEF_NODE;
-	return 0;
-}
-
-inline int kb_isfull (struct kb *kbuf){
-	if (kbuf->count == kbuf->maxnode){
-		return 1;
-	}
 	return 0;
 }
 
