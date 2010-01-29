@@ -7,5 +7,4 @@ all:
 	@make -C $(KERNEL_DIR) M=`pwd` modules
 
 clean:
-	rm  *.o *.mod.* Module.symvers .mydev.* .main.* .kbuf.* .stat.*
-	rm -r .tmp_version/ 
+	rm -r *.ko *.o *.mod.* Module.symvers .mydev.* .main.* .kbuf.* .stat.* .tmp_version/ 
