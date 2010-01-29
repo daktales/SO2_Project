@@ -11,19 +11,16 @@ void wbuf_init(wbuf* mybuffer){
 	mybuffer->count = 0;
 	mybuffer->done = 0;
 	mybuffer->todo = 0;
-	pthread_cond_init(&mybuffer->cv,NULL);
-}
-
-/* Destroy wbuf */
-void wbuf_destroy(wbuf* mybuffer){
-	pthread_cond_destroy(&mybuffer->cv);
 }
 
 /* Inserts an element */
 void wbuf_ins(char *value,wbuf* mybuffer){
 	wbe* new_wbe;
+
 	new_wbe = (wbe*)malloc(sizeof(wbe));
-	new_wbe->data = value;
+	new_wbe->data = malloc(strlen(value)+1);
+	strcpy(new_wbe->data,value);
+	free(value);
 	new_wbe->next = NULL;
 	
 	if (mybuffer->head == NULL){ /*	if empty list	*/
@@ -48,6 +45,7 @@ char* wbuf_ext(wbuf* mybuffer){
 	mybuffer->count--;
 	ret_value = malloc(strlen(ext_wbe->data)+1); 
 	strcpy(ret_value,ext_wbe->data);
+	free(ext_wbe->data);
 	free(ext_wbe); /* destroy extracted element	*/
 	return ret_value;
 }

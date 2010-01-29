@@ -15,24 +15,15 @@ struct wbuf_struct{
 	int count;
 	int done;
 	int todo;
-	pthread_cond_t cv;
 };
 typedef struct wbuf_struct wbuf;
 
-
-/* Inits wbuf */
 void wbuf_init(wbuf* mybuffer);
 
-/* Destroy wbuf */
-void wbuf_destroy(wbuf* mybuffer);
-
-/* Inserts an element */
 void wbuf_ins(char *value,wbuf* mybuffer);
 
-/* Extracts the first element of wbuf */
 char* wbuf_ext(wbuf* mybuffer);
 
-/* How many elements */
 int wbuf_count(wbuf* mybuffer);
 
 #endif
