@@ -14,17 +14,15 @@ struct kb{
 
 inline int kb_init (struct kb *kbuf);
 
-inline int kb_isempty (struct kb *kbuf);
+int kb_isempty (struct kb *kbuf);
 
 /*	Extract an element from kb	*/
-int kb_push (char *data,struct kb *kbuf);
+inline int kb_push (char *data,struct kb *kbuf);
 
 /*	Insert an element into kb	*/
-int kb_pop(char *data,struct kb *kbuf);
+inline int kb_pop(char *data,struct kb *kbuf);
 
-/*	Split a long string in substring using a kb buffer	*/
-void kb_split(char *data,int maxl,struct kb *kbuf);
+/* Populate an array with all data lenght */
+inline void kb_scan(int *data,struct kb *kbuf);
 
-/* Join substring from a kb buffer into a string	*/
-void kb_join(char *data,int maxl, struct kb *kbuf);
 #endif

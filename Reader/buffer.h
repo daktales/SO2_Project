@@ -14,17 +14,12 @@ struct wbuf_struct{
 	wbe* tail;
 	int count;
 	int done;
-	int todo;
-	pthread_cond_t cv;
 };
 typedef struct wbuf_struct wbuf;
 
 
 /* Inits wbuf */
 void wbuf_init(wbuf* mybuffer);
-
-/* Destroy wbuf */
-void wbuf_destroy(wbuf* mybuffer);
 
 /* Inserts an element */
 void wbuf_ins(char *value,wbuf* mybuffer);

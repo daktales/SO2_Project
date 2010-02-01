@@ -1,4 +1,6 @@
 #include <linux/module.h>
+
+#include "kbuf.h"
 #include "stat.h"
 
 inline void ds_init(struct ds *ds_var,int dim){
@@ -10,7 +12,18 @@ inline void ds_destroy(struct ds *ds_var){
 	kfree(ds_var->ds_list);
 }
 
-int ds_med(struct ds *ds_var){
+inline int ds_populate(struct ds *ds_var, struct kb *kb_var){
+	int len = kb_var->count;
+	if (len){
+		ds_init(ds_var,len);
+		kb_scan(ds_var->ds_list,kb_var);
+	}
+	return len;
+}
+	
+	
+
+inline int ds_med(struct ds *ds_var){
 	int tmp = 0;
 	int i;
 	for(i=0;i<(ds_var->ds_dim);i++){
@@ -20,7 +33,7 @@ int ds_med(struct ds *ds_var){
 	return tmp;
 }
 
-int ds_max(struct ds *ds_var){
+inline int ds_max(struct ds *ds_var){
 	int tmp = 0;
 	int i;
 	for(i=0;i<(ds_var->ds_dim);i++){
@@ -31,7 +44,7 @@ int ds_max(struct ds *ds_var){
 	return tmp;
 }
 
-int ds_min(struct ds *ds_var){
+inline int ds_min(struct ds *ds_var){
 	int tmp = 0;
 	int i;
 	for(i=0;i<(ds_var->ds_dim);i++){

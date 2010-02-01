@@ -36,7 +36,6 @@ static int nwt;
 static int write_loop; /* protected with rmutex */
 static int todo;
 
-
 /* * Threads * */
 
 /* Take raw data (capital letters) and converts them into lowercase
@@ -118,8 +117,11 @@ static void *elaborate_data(void *name){
 			/* If writing fails it will retry for 5 times */
 			while ((i<MAX_RETRY)&&(write(fd,data,strlen(data)+1))){  
 				if(DEB){fprintf(stderr,"Writing attempt %d fail, retry..\n",i);}
+				i++;
 			}
-			if (i==5){fprintf(stderr,"**FAIL writing on device");}
+			if (i==5){
+				fprintf(stderr,"**FAIL writing on device, data lost");
+			}
 			pthread_mutex_unlock(&emutex);
 		}
 	}
@@ -146,7 +148,7 @@ static void *create_data(void *name){
 			wbuf_ins(gen_data(),&rbuffer);
 			/* Awake elaborate T */
 			pthread_cond_signal(&rcv);
-			if(DEB){fprintf(stderr,"CREATE T%d (todo: %d)\n",myname,tmp_todo);}
+			if(DEB){fprintf(stdout,"CREATE T%d (todo: %d)\n",myname,tmp_todo);}
 		}
 		pthread_mutex_unlock(&rmutex);
 		usleep(2000000);
