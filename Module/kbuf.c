@@ -57,5 +57,6 @@ inline void kb_scan(int *data,struct kb *kbuf){
 	while (p != NULL){
 		data[i] = strlen(p->data);
 		i++;
+		p = p->next;
 	}
 }

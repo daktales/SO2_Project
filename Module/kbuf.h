@@ -9,7 +9,7 @@ struct kb_node {
 struct kb{ 
 	struct kb_node *head;
 	struct kb_node *tail;
-	short count;
+	int count;
 };
 
 inline int kb_init (struct kb *kbuf);

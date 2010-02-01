@@ -5,7 +5,7 @@
 #include <linux/poll.h>
 #include <linux/list.h> /*	Kernel List	*/
 #include <linux/mutex.h>
-#include <linux/kfifo.h>
+#include <linux/kthread.h>
 
 #include "main.h"
 #include "kbuf.h"
@@ -22,23 +22,68 @@ MODULE_LICENSE("GPL");
 static struct miscdevice my_device;
 
 static struct kb kb_fifo; /*	Buffer fifo	*/
-static struct mutex kb_mutex; /*	Buffer's mutex	*/
+
+static struct mutex dev_mutex; /*	Dev's mutex	*/
 
 static wait_queue_head_t wait_r; /*	Wait Queue	*/
 
+static struct task_struct *kt_desc; /* KThread Descriptor */
 
-static struct ds dev_stat;
+static struct ds dev_stat; /* Struct for statistics */
 
+static int dev_run;
+
+static int kt_stat(void *arg){
+	int dim;
+	int med,min,max;
+
+	while (!kthread_should_stop()){
+		mutex_lock(&dev_mutex);
+		set_current_state(TASK_INTERRUPTIBLE);
+		if (likely(dev_run)){
+			dim = ds_populate(&dev_stat,&kb_fifo);
+			if (dim){
+				med = ds_med(&dev_stat);
+				max = ds_max(&dev_stat);
+				min = ds_min(&dev_stat,max);
+				printk(KERN_DEBUG "** Device Stats **\n");
+				printk(KERN_DEBUG "** Number of node on device: %d **\n",dim);
+				printk(KERN_DEBUG "** Medium lenght of node data: %d **\n",med);
+				printk(KERN_DEBUG "** Max lenght of node data: %d **\n",max);
+				printk(KERN_DEBUG "** Min lenght of node data: %d **\n",min);
+				ds_reset(&dev_stat);
+			} else {
+				printk(KERN_DEBUG "** Device Stats **\n");
+				printk(KERN_DEBUG "** No node on device **\n");
+			}
+			mutex_unlock(&dev_mutex);
+			schedule_timeout(1 * HZ);
+		} else {
+			printk(KERN_DEBUG "** Device Stats **\n");
+			printk(KERN_DEBUG "** Nothing to do **\n");
+			mutex_unlock(&dev_mutex);
+			schedule_timeout(5 * HZ);
+		}
+	}
+
+	return 0;
+}
 
 static int my_open(struct inode *inode, struct file *file)
 {
+	mutex_lock(&dev_mutex);
 	printk(KERN_DEBUG "**Device Open\n");
+	dev_run++;
+	mutex_unlock(&dev_mutex);
 	return 0;
 }
 
 static int my_close(struct inode *inode, struct file *file)
 {
+	mutex_lock(&dev_mutex);
 	printk(KERN_DEBUG "**Device Close\n");
+	dev_run--;
+	mutex_unlock(&dev_mutex);
 	return 0;
 }
 
@@ -47,14 +92,14 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 	int res;
 	char* value;
 
-	mutex_lock(&kb_mutex);
+	mutex_lock(&dev_mutex);
 	value = kmalloc(dim,GFP_USER);
 	/* If empty buffer appends reader on device */
 	while (kb_isempty(&kb_fifo)){
 		printk(KERN_DEBUG "Reader Waiting on Device\n");
-		mutex_unlock(&kb_mutex);
+		mutex_unlock(&dev_mutex);
 		wait_event_interruptible(wait_r,(!kb_isempty(&kb_fifo)));
-		mutex_lock(&kb_mutex);
+		mutex_lock(&dev_mutex);
 	}
 	res = kb_pop(value,&kb_fifo);
 	if (unlikely(res)){
@@ -68,7 +113,7 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 	}
 	printk(KERN_DEBUG "Read %d byte from fifo: %s\n",dim,value);
 	r_end:
-	mutex_unlock(&kb_mutex);
+	mutex_unlock(&dev_mutex);
 	return res;
 }
 
@@ -77,7 +122,7 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 	int res, err;
 	char *value;
 
-	mutex_lock(&kb_mutex);
+	mutex_lock(&dev_mutex);
 	value = kmalloc(sizeof(char)*dim,GFP_KERNEL);
 	if (unlikely(value == NULL)){
 		res = 1;
@@ -96,7 +141,7 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 
 	w_end:
 	kfree(value);
-	mutex_unlock(&kb_mutex);
+	mutex_unlock(&dev_mutex);
 	return res;	
 }
 
@@ -110,16 +155,26 @@ static int my_module_init(void)
 		return res;
 	}
 	printk(KERN_DEBUG "**Device Init\n");
-	mutex_init(&kb_mutex);
+	mutex_init(&dev_mutex);
 	kb_init(&kb_fifo);
 	init_waitqueue_head(&wait_r);
-	return res;
+
+	kt_desc = kthread_run(kt_stat, NULL, "Statistics_Thread");
+	if (IS_ERR(kt_desc)) {
+		printk("**Error creating kernel thread!\n");
+		return PTR_ERR(kt_desc);
+	}
+
+	dev_run = 0;
+
+	return 0;
 }
 
 static void my_module_exit(void)
 {
-	mutex_destroy(&kb_mutex);
+	mutex_destroy(&dev_mutex);
 	mutex_destroy(&write_mutex);
+	kthread_stop(kt_desc);
 	misc_deregister(&my_device);
 	printk(KERN_DEBUG "*Device Exit\n");
 }
