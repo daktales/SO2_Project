@@ -25,8 +25,10 @@ static struct kb kb_fifo; /*	Buffer fifo	*/
 static struct mutex dev_mutex; /*	Dev's mutex	*/
 
 static wait_queue_head_t wait_r; /*	Wait Queue	*/
+static wait_queue_head_t wait_w;
 
-static struct task_struct *kt_desc; /* KThread Descriptor */
+static struct task_struct *kt_stat_desc; /* KThread Descriptors */
+static struct task_struct *kt_realloc_desc;
 
 static struct ds dev_stat; /* Struct for statistics */
 
@@ -50,13 +52,16 @@ static int kt_stat(void *arg){
 				printk(KERN_DEBUG "** Medium lenght of node data: %d **\n",med);
 				printk(KERN_DEBUG "** Max lenght of node data: %d **\n",max);
 				printk(KERN_DEBUG "** Min lenght of node data: %d **\n",min);
-				ds_reset(&dev_stat);
+				ds_reset_stat(&dev_stat);
+				
 			} else {
 				printk(KERN_DEBUG "** Device Stats **\n");
 				printk(KERN_DEBUG "** No node on device **\n");
+
 			}
+			ds_add_kb_value(&dev_stat,dim);
 			mutex_unlock(&dev_mutex);
-			schedule_timeout(2 * HZ);
+			schedule_timeout(1 * HZ);
 		} else {
 			printk(KERN_DEBUG "** Device Stats **\n");
 			printk(KERN_DEBUG "** Nothing to do **\n");
@@ -68,13 +73,47 @@ static int kt_stat(void *arg){
 	return 0;
 }
 
+static int kt_realloc(void *arg){
+	int per,med_occ;
+	int tmp = KB_OCC;
+	while (!kthread_should_stop()){
+		mutex_lock(&dev_mutex);
+		set_current_state(TASK_INTERRUPTIBLE);
+		if (likely(dev_run)){
+			per = ds_get_kb_occupation(&dev_stat);
+			med_occ = my_div(dev_stat.ds_kb_sum,dev_stat.ds_kb_dim);
+			if (per!= tmp){
+				printk(KERN_DEBUG "** Device Reallocator **\n");
+				printk(KERN_DEBUG "** Actual buffer occupation: %d (percento) **\n",per);
+				ds_set_kb_occupation(&dev_stat,med_occ);
+				printk(KERN_DEBUG "** New Buffer Max size: %d **\n",dev_stat.ds_kb_max);
+				ds_reset_alloc(&dev_stat);
+			} else {
+				printk(KERN_DEBUG "** Device Reallocator **\n");
+				printk(KERN_DEBUG "** No reallocation needed **\n");
+			}
+			mutex_unlock(&dev_mutex);
+			schedule_timeout(3 * HZ);
+		} else {
+			printk(KERN_DEBUG "** Device Reallocator **\n");
+			printk(KERN_DEBUG "** Nothing to do **\n");
+			mutex_unlock(&dev_mutex);
+			schedule();
+		}
+	}
+	return 0;
+}
+
 static int my_open(struct inode *inode, struct file *file)
 {
 	mutex_lock(&dev_mutex);
 	printk(KERN_DEBUG "**Device Open\n");
 	dev_run++;
+	if (dev_run == 1){
+		wake_up_process(kt_stat_desc);
+		wake_up_process(kt_realloc_desc);
+	}
 	mutex_unlock(&dev_mutex);
-	wake_up_process(kt_desc);
 	return 0;
 }
 
@@ -94,9 +133,14 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 
 	mutex_lock(&dev_mutex);
 	value = kmalloc(dim,GFP_USER);
+	if (unlikely(value == NULL)){
+		res = 1;
+		printk(KERN_ERR "**Error in allocating value");
+		goto r_end;
+	}
 	/* If empty buffer appends reader on device */
 	while (kb_isempty(&kb_fifo)){
-		printk(KERN_DEBUG "Reader Waiting on Device\n");
+		printk(KERN_DEBUG "Reader Waiting on Empty Device\n");
 		mutex_unlock(&dev_mutex);
 		wait_event_interruptible(wait_r,(!kb_isempty(&kb_fifo)));
 		mutex_lock(&dev_mutex);
@@ -104,13 +148,16 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 	res = kb_pop(value,&kb_fifo);
 	if (unlikely(res)){
 		res = 1;
+		printk(KERN_ERR "**Error in kb_pop");
 		goto r_end;
 	}
 	res = copy_to_user(buf,value,dim);
 	if (unlikely(res)){
 		res = -EFAULT;
+		printk(KERN_ERR "**Error in copy_to_user");
 		goto r_end;
 	}
+	wake_up_interruptible(&wait_w); /* Awake Writer */
 	printk(KERN_DEBUG "Read %d byte from fifo: %s\n",dim,value);
 	r_end:
 	mutex_unlock(&dev_mutex);
@@ -128,6 +175,12 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 		res = 1;
 		printk(KERN_ERR "**Error in allocating value");
 		goto w_end;
+	}
+		while (kb_isfull(&kb_fifo,dev_stat.ds_kb_max)){
+		printk(KERN_DEBUG "Writer Waiting on Full Device\n");
+		mutex_unlock(&dev_mutex);
+		wait_event_interruptible(wait_w,(!kb_isfull(&kb_fifo,dev_stat.ds_kb_max)));
+		mutex_lock(&dev_mutex);
 	}
 	err = copy_from_user(value,buf,dim);
 	if (unlikely(err)){
@@ -148,7 +201,8 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 static int my_module_init(void)
 {
 	int res;
-
+	int tmp = START_KB_DIM;
+	
 	res = misc_register(&my_device);
 	if (unlikely(res)){
 		printk(KERN_ERR "**Device error: %d\n",res);
@@ -158,15 +212,20 @@ static int my_module_init(void)
 	mutex_init(&dev_mutex);
 	kb_init(&kb_fifo);
 	init_waitqueue_head(&wait_r);
+	init_waitqueue_head(&wait_w);
 
-	kt_desc = kthread_run(kt_stat, NULL, "Statistics_Thread");
-	if (IS_ERR(kt_desc)) {
+	kt_stat_desc = kthread_run(kt_stat, NULL, "Statistics_Thread");
+	if (IS_ERR(kt_stat_desc)) {
 		printk("**Error creating kernel thread!\n");
-		return PTR_ERR(kt_desc);
+		return PTR_ERR(kt_stat_desc);
 	}
-
+	kt_realloc_desc = kthread_run(kt_realloc, NULL, "Reallocation_Thread");
+	if (IS_ERR(kt_realloc_desc)) {
+		printk("**Error creating kernel thread!\n");
+		return PTR_ERR(kt_realloc_desc);
+	}
+	ds_init_alloc(&dev_stat, tmp);
 	dev_run = 0;
-
 	return 0;
 }
 
@@ -174,7 +233,7 @@ static void my_module_exit(void)
 {
 	mutex_destroy(&dev_mutex);
 	mutex_destroy(&write_mutex);
-	kthread_stop(kt_desc);
+	kthread_stop(kt_stat_desc);
 	misc_deregister(&my_device);
 	printk(KERN_DEBUG "*Device Exit\n");
 }

@@ -73,7 +73,7 @@ static void *elaborate_data(void *name){
 			count = wbuf_count(&rbuffer);
 			if (DEB){fprintf(stdout,"ELABORATE T%d (todo:%d): %s\n",myname,count,data);}
 			pthread_mutex_unlock(&rmutex);
-			usleep(4000000);
+			usleep(count*500000);
 			to_lower(data);
 			pthread_mutex_lock(&emutex);
 			wbuf_ins(data,&ebuffer);
@@ -124,7 +124,7 @@ static void *elaborate_data(void *name){
 			}
 			pthread_mutex_unlock(&emutex);
 		}
-		usleep(1000000);
+		usleep((rand() % 5 + 5)*300000);
 	}
 	return NULL;
 }
@@ -152,7 +152,7 @@ static void *create_data(void *name){
 			if(DEB){fprintf(stdout,"CREATE T%d (todo: %d)\n",myname,tmp_todo);}
 		}
 		pthread_mutex_unlock(&rmutex);
-		usleep(1000000);
+		usleep((rand() % 5 + 8)*250000);
 	}
 	return NULL;
 }

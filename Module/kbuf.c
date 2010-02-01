@@ -15,6 +15,13 @@ int kb_isempty (struct kb *kbuf){
 	return 0;
 }
 
+int kb_isfull (struct kb *kbuf,int max){
+	if (kbuf->count < max){
+		return 0;
+	}
+	return 1;
+}
+
 inline int kb_push (char *data,struct kb *kbuf){
 	struct kb_node *node = kmalloc(sizeof(struct kb_node),GFP_KERNEL);
 	node->data = kmalloc(strlen(data)+1,GFP_KERNEL);

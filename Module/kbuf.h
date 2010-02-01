@@ -14,6 +14,8 @@ struct kb{
 
 inline int kb_init (struct kb *kbuf);
 
+int kb_isfull (struct kb *kbuf,int max);
+
 int kb_isempty (struct kb *kbuf);
 
 /*	Extract an element from kb	*/

@@ -64,7 +64,7 @@ static void *elaborate_data(void *name){
 			count = wbuf_count(&rbuffer);
 			if (DEB){fprintf(stdout,"ELABORATE T%d (todo:%d): %s\n",myname,count,data);}
 			pthread_mutex_unlock(&rmutex);
-			usleep(4000000);
+			usleep(count*400000);
 			to_upper(data);
 			pthread_mutex_lock(&emutex);
 			wbuf_ins(data,&ebuffer);
@@ -125,7 +125,7 @@ static void *read_dev(void *name){
 			pthread_cond_signal(&rcv);
 		}
 		pthread_mutex_unlock(&rmutex);
-		usleep(1000000);
+		usleep(2700000);
 	}
 	return NULL;
 }
