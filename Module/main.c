@@ -3,7 +3,6 @@
 #include <linux/init.h>
 #include <linux/miscdevice.h>
 #include <linux/poll.h>
-#include <linux/list.h> /*	Kernel List	*/
 #include <linux/mutex.h>
 #include <linux/kthread.h>
 
@@ -57,12 +56,12 @@ static int kt_stat(void *arg){
 				printk(KERN_DEBUG "** No node on device **\n");
 			}
 			mutex_unlock(&dev_mutex);
-			schedule_timeout(1 * HZ);
+			schedule_timeout(2 * HZ);
 		} else {
 			printk(KERN_DEBUG "** Device Stats **\n");
 			printk(KERN_DEBUG "** Nothing to do **\n");
 			mutex_unlock(&dev_mutex);
-			schedule_timeout(5 * HZ);
+			schedule();
 		}
 	}
 
@@ -75,6 +74,7 @@ static int my_open(struct inode *inode, struct file *file)
 	printk(KERN_DEBUG "**Device Open\n");
 	dev_run++;
 	mutex_unlock(&dev_mutex);
+	wake_up_process(kt_desc);
 	return 0;
 }
 

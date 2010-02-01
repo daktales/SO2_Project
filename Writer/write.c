@@ -124,6 +124,7 @@ static void *elaborate_data(void *name){
 			}
 			pthread_mutex_unlock(&emutex);
 		}
+		usleep(1000000);
 	}
 	return NULL;
 }
@@ -151,7 +152,7 @@ static void *create_data(void *name){
 			if(DEB){fprintf(stdout,"CREATE T%d (todo: %d)\n",myname,tmp_todo);}
 		}
 		pthread_mutex_unlock(&rmutex);
-		usleep(2000000);
+		usleep(1000000);
 	}
 	return NULL;
 }

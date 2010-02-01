@@ -12,11 +12,11 @@
 #include "fun.h"
 
 #define S_ET 5 /*	Step for new eleborate_data Thread	*/
-#define MAX_ET 10 /*	Max ET	*/
+#define MAX_ET 4 /*	Max ET	*/
 #define S_RT 1 /*	Step for new read_dev Thread	*/
 #define MAX_RT 1 /*	Max RT	*/
-#define S_PT 20 /*	Step for print_data Thread	*/
-#define MAX_PT 5 /*	Max PT	*/
+#define S_PT 10 /*	Step for print_data Thread	*/
+#define MAX_PT 2 /*	Max PT	*/
 
 #define DEV "/dev/mydev"
 
@@ -64,7 +64,7 @@ static void *elaborate_data(void *name){
 			count = wbuf_count(&rbuffer);
 			if (DEB){fprintf(stdout,"ELABORATE T%d (todo:%d): %s\n",myname,count,data);}
 			pthread_mutex_unlock(&rmutex);
-			usleep(2000000);
+			usleep(4000000);
 			to_upper(data);
 			pthread_mutex_lock(&emutex);
 			wbuf_ins(data,&ebuffer);
@@ -94,6 +94,7 @@ static void *print_data(void *name){
 			fprintf(stdout,"PRINT T%d (todo:%d): %s\n",myname,count,data);
 			pthread_mutex_unlock(&emutex);
 		}
+		usleep(1000000);
 	}
 	return NULL;
 }
