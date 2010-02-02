@@ -1,0 +1,15 @@
+BUG
+
+1.CTRL-C mentre il writer sta facendo solo WRITE (NOT FIXED)
+2.CTRL-C sul reader, fa danni (verificare se è lo stesso problema che aveva il writer)
+3.il pc in uni non lascia fare l'inline (forse un problema di ram richiesta da gcc durante la compilazione)
+4.Chiudere i kthread nel modulo
+5.Verificare tutte le chiusure a questo punto :D
+
+READER
+SleepAVG 78%
+VmRss 272Kb
+
+WRITER
+SleepAVG 58%
+VmRss 340Kb

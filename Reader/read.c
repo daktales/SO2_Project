@@ -232,7 +232,7 @@ int main (int argc, char *argv[]){
 	if (argc==2){
 		todo = atoi(argv[1]);
 	} else {
-		fprintf(stderr,"Syntax: %s <number of information>\n",argv[0]);
+		fprintf(stderr,"Syntax: %s <number of information>\n\t 0 for reading until terminator found\n",argv[0]);
 		return -1;
 	}
 

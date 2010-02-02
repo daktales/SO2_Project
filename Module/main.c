@@ -75,16 +75,15 @@ static int kt_stat(void *arg){
 
 static int kt_realloc(void *arg){
 	int per,med_occ;
-	int tmp = KB_OCC;
 	while (!kthread_should_stop()){
 		mutex_lock(&dev_mutex);
 		set_current_state(TASK_INTERRUPTIBLE);
 		if (likely(dev_run)){
 			per = ds_get_kb_occupation(&dev_stat);
 			med_occ = my_div(dev_stat.ds_kb_sum,dev_stat.ds_kb_dim);
-			if (per!= tmp){
+			if (per!= KB_OCC){
 				printk(KERN_DEBUG "** Device Reallocator **\n");
-				printk(KERN_DEBUG "** Actual buffer occupation: %d (percento) **\n",per);
+				printk(KERN_DEBUG "** Actual buffer occupation: %d%% **\n",per);
 				ds_set_kb_occupation(&dev_stat,med_occ);
 				printk(KERN_DEBUG "** New Buffer Max size: %d **\n",dev_stat.ds_kb_max);
 				ds_reset_alloc(&dev_stat);
@@ -201,7 +200,6 @@ static ssize_t my_write(struct file *file, const char __user * buf, size_t dim, 
 static int my_module_init(void)
 {
 	int res;
-	int tmp = START_KB_DIM;
 	
 	res = misc_register(&my_device);
 	if (unlikely(res)){
@@ -224,7 +222,7 @@ static int my_module_init(void)
 		printk("**Error creating kernel thread!\n");
 		return PTR_ERR(kt_realloc_desc);
 	}
-	ds_init_alloc(&dev_stat, tmp);
+	ds_init_alloc(&dev_stat, START_KB_DIM);
 	dev_run = 0;
 	return 0;
 }

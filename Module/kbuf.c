@@ -1,7 +1,7 @@
 #include <linux/module.h>
 #include "kbuf.h"
 
-inline int kb_init (struct kb *kbuf){
+int kb_init (struct kb *kbuf){
 	kbuf->head = NULL;
 	kbuf->tail = NULL;
 	kbuf->count = 0;
@@ -22,7 +22,7 @@ int kb_isfull (struct kb *kbuf,int max){
 	return 1;
 }
 
-inline int kb_push (char *data,struct kb *kbuf){
+int kb_push (char *data,struct kb *kbuf){
 	struct kb_node *node = kmalloc(sizeof(struct kb_node),GFP_KERNEL);
 	node->data = kmalloc(strlen(data)+1,GFP_KERNEL);
 	
@@ -39,7 +39,7 @@ inline int kb_push (char *data,struct kb *kbuf){
 	return 0;
 }
 
-inline int kb_pop(char *data,struct kb *kbuf){
+int kb_pop(char *data,struct kb *kbuf){
 	struct kb_node *node;
 	if (kbuf->head == NULL){	/* if empty	*/
 		return 1;
@@ -58,7 +58,7 @@ inline int kb_pop(char *data,struct kb *kbuf){
 	return 0;
 }
 
-inline void kb_scan(int *data,struct kb *kbuf){
+void kb_scan(int *data,struct kb *kbuf){
 	struct kb_node *p = kbuf->head;
 	int i = 0;
 	while (p != NULL){

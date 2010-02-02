@@ -12,20 +12,24 @@
 #include "buffer.h"
 #include "fun.h"
 
-/* */
+/* * * VARIABLES * * */
 
 int usleep (unsigned int value);
 
-static wbuf rbuffer; /*	FIFO for raw data	*/
+/*	FIFO for raw data	*/
+static wbuf rbuffer; 
 static pthread_mutex_t rmutex;
 static pthread_cond_t rcv;
 
-static wbuf ebuffer; /*	FIFO for elaborated data	*/
+/*	FIFO for elaborated data	*/
+static wbuf ebuffer; 
 static pthread_mutex_t emutex;
 static pthread_cond_t ecv;
 
-static int fd; /* Variable for device	*/
+/*	Variable for device	*/
+static int fd; 
 
+/*	Threads Lists	*/
 static pthread_t* cthreads;
 static int nct;
 static pthread_t* ethreads;
@@ -33,8 +37,14 @@ static int net;
 static pthread_t* wthreads;
 static int nwt;
 
+/*	For looping	*/
 static int write_loop; /* protected with rmutex */
-static int todo;
+static int todo; /* protected with rmutex */
+
+/*	Fun	*/
+static int control;
+
+/* * * FUNCTIONS * * */
 
 /* * Threads * */
 
@@ -157,7 +167,7 @@ static void *create_data(void *name){
 	return NULL;
 }
 
-/* Wait until a kind of thread die */
+/*	Wait until a kind of thread die */
 void wait_for(pthread_t *t_array, int t_num){
 	int i;
 	for(i=0;i<t_num;i++){
@@ -168,14 +178,16 @@ void wait_for(pthread_t *t_array, int t_num){
 /*	Release pending threads	*/
 void release_t(pthread_mutex_t *mut,wbuf *wb,pthread_cond_t *cv){
 	pthread_mutex_lock(mut);
-	wb->done = 1; /* Set "writing done" on the buffer */
-	pthread_cond_broadcast(cv); /* Awake all T waiting on the empty buffer */
+	/* 	Set "writing done" on the buffer	 */
+	wb->done = 1; 
+	/*	Awake all T waiting on the empty buffer	*/
+	pthread_cond_broadcast(cv); 
 	pthread_mutex_unlock(mut);
 }
 
-/* */
+/* *	General functions * */
 
-/* Destroy mutex, c.v. and free threads arrays */
+/*	Destroy mutex, c.v. and free threads arrays */
 void cleanup(){
 	pthread_mutex_destroy(&rmutex);
 	pthread_mutex_destroy(&emutex);
@@ -188,7 +200,7 @@ void cleanup(){
 	free(wthreads);
 }
 
-/* Open device */
+/*	Open device */
 void dev_open(int *f){
 	int status;
 	status = *f = open(DEV,O_WRONLY);
@@ -199,7 +211,7 @@ void dev_open(int *f){
 	if(DEB){printf("Device Opened\n");};
 }
 
-/* Close device */
+/*	Close device */
 void dev_close(int *f){
 	int status;
 	status = close(*f);
@@ -211,9 +223,10 @@ void dev_close(int *f){
 	if(DEB){printf("Device Closed\n");}
 }
 
-/* Send 'done' command to device */
+/*	Send 'done' command to device */
 int dev_done(int *f){
 	int i = 0;
+	/*	Try for MAX_RETRY times	*/
 	while((i<=MAX_RETRY)&&(write(*f,"00\0",3))){
 		if(DEB){fprintf(stderr,"Error sending \'done\' command\n");}
 		i++;
@@ -227,6 +240,11 @@ int dev_done(int *f){
 
 /*	Intercepts CTRL-C	*/
 void catcher_SIGINT(int signum) {
+	control++;
+	if (control>1){
+		printf("I've said wait..!");
+		return;
+	}
 	printf("Closing, please wait..(signum: %d)\n",signum);
 	/* Using rmutex because create_data check todo and write loop variables
 	 * within rmutex mutual exclusion
@@ -234,24 +252,17 @@ void catcher_SIGINT(int signum) {
 	pthread_mutex_lock(&rmutex);
 	todo = 0;
 	write_loop = 0;
+	rbuffer.head = NULL;
+	rbuffer.count = 0;
+	rbuffer.done = 1;
+	pthread_mutex_lock(&emutex);
 	pthread_mutex_unlock(&rmutex);
-
-	if (&fd != NULL){
-		wait_for(cthreads,nct);
-		if(DEB){printf("CTRL-C: All Create threads has stopped\n");}	
-		release_t(&rmutex,&rbuffer,&rcv);
-		if(DEB){printf("CTRL-C: Raw buffer closed\n");}
-		wait_for(ethreads,net);
-		if(DEB){printf("CTRL-C: All Elaborate threads has stopped\n");}
-		release_t(&emutex,&ebuffer,&ecv);
-		if(DEB){printf("CTRL-C: Elaborate buffer closed\n");}
-		wait_for(wthreads,nwt);
-		if(DEB){printf("CTRL-C: All Write threads has stopped\n");}
-		dev_done(&fd);
-		dev_close(&fd);
-	}
-	cleanup();
-	exit(1);
+	ebuffer.head = NULL;
+	ebuffer.count = 0;
+	ebuffer.done = 1;
+	pthread_mutex_unlock(&emutex);
+	
+	return;
 	}
 
 
@@ -275,13 +286,14 @@ int main (int argc, char *argv[]){
 		return -1;
 	}
 
-	/* Set write loop	*/
+	/*	Set write loop	*/
 	write_loop = (todo) ? 0 : 1;
 
-	/* handle SIGINT	*/
+	/*	handle SIGINT	*/
 	signal(SIGINT, catcher_SIGINT);
-
-	/* Open Device	*/
+	control = 0;
+	
+	/*	Open Device	*/
 	dev_open(&fd);
 
 	/*	Automagically choose best number of thread	*/
@@ -328,18 +340,24 @@ int main (int argc, char *argv[]){
 
 	/* * Closing * */
 
-	/*		Waiting for create_data Thread	*/
+	/*	Waiting for create_data Thread	*/
 	wait_for(cthreads,nct);
+	if(DEB){printf("Closing: All Create threads has stopped\n");}
 	release_t(&rmutex,&rbuffer,&rcv);
+	if(DEB){printf("Closing: Raw buffer closed\n");}
 
 	/*	Waiting for elaborate_data Thread	*/
 	wait_for(ethreads,net);
+	if(DEB){printf("Closing: All Elaborate threads has stopped\n");}
 	release_t(&emutex,&ebuffer,&ecv);
+	if(DEB){printf("Closing: Elaborate buffer closed\n");}
 
 	/*	Waiting for write_dev Thread	*/
 	wait_for(wthreads,nwt);
+	if(DEB){printf("Closing: All Write threads has stopped\n");}
 
-	/* Say to device that i'm done	*/
+
+	/*	Say to device that i'm done	*/
 	dev_done(&fd);
 	
 	/*	Close device	*/
