@@ -31,7 +31,7 @@ void to_lower(char* letters){
 		tmp = tmp+32;
 		letters[i]=(char)tmp;
 		i++;
-			}
+	}
 }
 
 

@@ -128,7 +128,7 @@ static int my_close(struct inode *inode, struct file *file)
 ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 {
 	int res;
-	char* value;
+	char *value;
 
 	mutex_lock(&dev_mutex);
 	value = kmalloc(dim,GFP_USER);
@@ -137,7 +137,7 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 		printk(KERN_ERR "**Error in allocating value");
 		goto r_end;
 	}
-	/* If empty buffer appends reader on device */
+	/* If empty buffer append reader on device */
 	while (kb_isempty(&kb_fifo)){
 		printk(KERN_DEBUG "Reader Waiting on Empty Device\n");
 		mutex_unlock(&dev_mutex);
@@ -146,7 +146,6 @@ ssize_t my_read(struct file *file, char __user *buf, size_t dim, loff_t *ppos)
 	}
 	res = kb_pop(value,&kb_fifo);
 	if (unlikely(res)){
-		res = 1;
 		printk(KERN_ERR "**Error in kb_pop");
 		goto r_end;
 	}

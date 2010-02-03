@@ -50,20 +50,20 @@ static int control;
 
 /* Take raw data (capital letters) and converts them into lowercase
  * letters.
- * Use two mutex to syncronize with other (all) threads.
+ * Use two mutexes to syncronize with other (all) threads.
  * rmutex protects raw data buffer (rbuffer)
  * emutex protects eleaborated data buffer (ebuffer)
  *
- * It use a condition variables to check if raw buffer is void,
- * if buffer is void but create_data thread has not finished (buffer.done)
- * this thread wait for "input" from create_data
+ * It uses a condition variable to check if the raw buffer is void,
+ * if the buffer is void, but create_data thread has not finished (buffer.done),
+ * this thread waits for "input" from create_data
  *
- * Processing data is not done in mutual exclusion to prevent that a long
- * elaboration exclude other thread to access buffers.
+ * Processing data is not performed in mutual exclusion in order to prevent
+ * a long elaboration task excludes other threads from accessing the buffers.
  *
  * When elaboration is finished it will release a pending write_dev thread
  *
- * Die when there are nothing else to do (empty rbuffer and .done = 1 )
+ * Die when there's nothing else to do (empty rbuffer and .done = 1 )
  */
 static void *elaborate_data(void *name){
 	int stop = 0;
@@ -102,7 +102,7 @@ static void *elaborate_data(void *name){
  *
  * It will check if write on device fails and do some retry if it fail.
  *
- * Die when there are nothing else to do
+ * Die when there is nothing else to do
  */
  static void *write_dev(void *name){
 	int stop = 0;
