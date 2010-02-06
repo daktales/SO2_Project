@@ -14,10 +14,7 @@ description=
 run_cmd=
 
 [files]
-current_page=3
-FILE_NAME_0=21;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/write.c;0
-FILE_NAME_1=243;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/write.h;0
-FILE_NAME_2=17;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/buffer.c;0
-FILE_NAME_3=683;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/fun.c;0
-FILE_NAME_4=308;Make;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/Makefile;0
-FILE_NAME_5=37;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/buffer.h;0
+current_page=1
+FILE_NAME_0=6859;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/write.c;0
+FILE_NAME_1=214;C;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/write.h;0
+FILE_NAME_2=308;Make;0;16;1;1;0;/home/dak/Uni/So2/Prj/Writer/Makefile;0
