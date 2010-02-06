@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc -m32
 LDFLAGS=-pthread -static
 CFLAGS=-c -Wall -Wextra -pedantic
 SOURCES=write.c fun.c buffer.c
