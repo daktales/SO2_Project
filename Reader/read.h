@@ -4,15 +4,17 @@
 #include "buffer.h"
 
 #define S_ET 5 /*	Step for new eleborate_data Thread	*/
-#define MAX_ET 10 /*	Max ET	*/
-#define S_RT 10 /*	Step for new read_dev Thread	*/
-#define MAX_RT 4 /*	Max CR	*/
-#define S_PT 10 /*	Step for new print Thread	*/
-#define MAX_PT 4 /*	Max PT	*/
+#define MAX_ET 4 /*	Max ET	*/
+#define S_RT 1 /*	Step for new read_dev Thread	*/
+#define MAX_RT 1 /*	Max RT	*/
+#define S_PT 10 /*	Step for print_data Thread	*/
+#define MAX_PT 2 /*	Max PT	*/
+
 #define DEV "/dev/mydev"
 
 #define DEB 1 /*	Enable stdout output	*/
 #define MAX_RETRY 5 /*	Number of write retry	*/
+#define READ_BYTE 40 /* Byte to read from device */
 
 static void *elaborate_data(void *name);
 

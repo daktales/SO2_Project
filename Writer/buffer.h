@@ -14,16 +14,19 @@ struct wbuf_struct{
 	wbe* tail;
 	int count;
 	int done;
-	int todo;
 };
 typedef struct wbuf_struct wbuf;
 
+/* Inits wbuf */
 void wbuf_init(wbuf* mybuffer);
 
+/* Inserts an element */
 void wbuf_ins(char *value,wbuf* mybuffer);
 
+/* Extracts the first element of wbuf */
 char* wbuf_ext(wbuf* mybuffer);
 
+/* How many elements */
 int wbuf_count(wbuf* mybuffer);
 
 #endif

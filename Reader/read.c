@@ -8,32 +8,28 @@
 #include <signal.h>
 #include <string.h>
 
+#include "read.h"
 #include "buffer.h"
 #include "fun.h"
 
-#define S_ET 5 /*	Step for new eleborate_data Thread	*/
-#define MAX_ET 4 /*	Max ET	*/
-#define S_RT 1 /*	Step for new read_dev Thread	*/
-#define MAX_RT 1 /*	Max RT	*/
-#define S_PT 10 /*	Step for print_data Thread	*/
-#define MAX_PT 2 /*	Max PT	*/
-
-#define DEV "/dev/mydev"
-
-#define DEB 1 /*	Enable stdout output	*/
+/* * * VARIABLES * * */
 
 int usleep (unsigned int value);
 
-static wbuf rbuffer; /*	FIFO for raw data	*/
+/*	FIFO for raw data	*/
+static wbuf rbuffer; 
 static pthread_mutex_t rmutex;
 static pthread_cond_t rcv;
 
-static wbuf ebuffer; /*	FIFO for elaborated data	*/
+/*	FIFO for elaborated data	*/
+static wbuf ebuffer; 
 static pthread_mutex_t emutex;
 static pthread_cond_t ecv;
 
-static int fd; /* Variable for device	*/
+/*	Variable for device	*/
+static int fd; 
 
+/*	Threads Lists	*/
 static pthread_t* rthreads;
 static int nrt;
 static pthread_t* ethreads;
@@ -41,11 +37,34 @@ static int net;
 static pthread_t* p_threads;
 static int npt;
 
+/*	For looping	*/
 static int read_loop; /* protected with rmutex */
-static int todo;
+static int todo; /* protected with rmutex */
 
-/* Threads */
+/*	Fun	*/
+static int control;
 
+/* * * FUNCTIONS * * */
+
+/* * Threads * */
+
+/* Take raw data (non-capital letters) and converts them into uppercase
+ * letters.
+ * Use two mutexes to syncronize with other (all) threads.
+ * rmutex protects raw data buffer (rbuffer)
+ * emutex protects eleaborated data buffer (ebuffer)
+ *
+ * It uses a condition variable to check if the raw buffer is void,
+ * if the buffer is void, but read_dev thread has not finished (buffer.done),
+ * this thread waits for "input" from read_dev
+ *
+ * Processing data is not performed in mutual exclusion in order to prevent
+ * a long elaboration task excludes other threads from accessing the buffers.
+ *
+ * When elaboration is finished it will release a pending write_dev thread
+ *
+ * Die when there's nothing else to do (empty rbuffer and .done = 1 )
+ */
 static void *elaborate_data(void *name){
 	int stop = 0;
 	int count;
@@ -68,6 +87,7 @@ static void *elaborate_data(void *name){
 			to_upper(data);
 			pthread_mutex_lock(&emutex);
 			wbuf_ins(data,&ebuffer);
+			/* Awake print T */
 			pthread_cond_signal(&ecv);
 			pthread_mutex_unlock(&emutex);
 		}
@@ -75,6 +95,13 @@ static void *elaborate_data(void *name){
 	return NULL;
 }
 
+/* Print data to stdout
+ * Use one mutex to syncronize with other print and elaborate threads.
+ * Like elaborate threads it will protect source buffer (ebuffer) with
+ * a mutex (emutex). Use a c.v. to sleep if ebuffer is empty.
+ *
+ * Die when there is nothing else to do
+ */
 static void *print_data(void *name){
 	int stop = 0;
 	char* data;
@@ -98,19 +125,25 @@ static void *print_data(void *name){
 	}
 	return NULL;
 }
-
+/* Read data from device
+ *
+ * Infinite loop until 00 (done command) or fixed number of read
+ *
+ * Mutex for rbuffer
+ * Awake elaborate thread with c.v.
+ */
 static void *read_dev(void *name){
 	int stop = 0;
 	int tmp_todo;
 	int myname = (int) name;
-	char *tmp = (char*) malloc((size_t)40);
+	char *tmp = (char*) malloc((size_t)READ_BYTE);
 	while(!stop){
 		pthread_mutex_lock(&rmutex);
 		tmp_todo = (read_loop) ? 1 : todo--;
 		if (tmp_todo<=0){
 			stop = 1;
 		} else {
-			if (read(fd,tmp,40)){
+			if (read(fd,tmp,READ_BYTE)){
 				fprintf(stderr,"Read from device failed\n");
 			} else {
 				if (!strcmp(tmp,"00\0")){
@@ -122,6 +155,7 @@ static void *read_dev(void *name){
 					if(DEB){fprintf(stdout,"READ T%d (todo: %d): %s\n",myname,tmp_todo,tmp);}
 				}
 			}
+			/* Awake elaborate T */
 			pthread_cond_signal(&rcv);
 		}
 		pthread_mutex_unlock(&rmutex);
@@ -146,6 +180,7 @@ void release_t(pthread_mutex_t *mut,wbuf *wb,pthread_cond_t *cv){
 	pthread_mutex_unlock(mut);
 }
 
+/* *	General functions * */
 
 /* Destroy mutex, c.v. and free threads arrays */
 void cleanup(){
@@ -185,6 +220,11 @@ void dev_close(int *f){
 
 /*	Intercepts CTRL-C	*/
 void catcher_SIGINT(int signum) {
+	control++;
+	if (control>1){
+		printf("I've said wait..!");
+		return;
+	}
 	printf("Closing, please wait..(signum: %d)\n",signum);
 	/* Using rmutex because create_data check todo and read loop variables
 	 * within rmutex mutual exclusion
@@ -192,23 +232,17 @@ void catcher_SIGINT(int signum) {
 	pthread_mutex_lock(&rmutex);
 	todo = 0;
 	read_loop = 0;
+	rbuffer.head = NULL;
+	rbuffer.count = 0;
+	rbuffer.done = 1;
+	pthread_mutex_lock(&emutex);
 	pthread_mutex_unlock(&rmutex);
+	ebuffer.head = NULL;
+	ebuffer.count = 0;
+	ebuffer.done = 1;
+	pthread_mutex_unlock(&emutex);
 
-	if (&fd != NULL){
-		wait_for(rthreads,nrt);
-		if(DEB){printf("CTRL-C: All Read threads has stopped\n");}
-		release_t(&rmutex,&rbuffer,&rcv);
-		if(DEB){printf("CTRL-C: Raw buffer closed\n");}
-		wait_for(ethreads,net);
-		if(DEB){printf("CTRL-C: All Elaborate threads has stopped\n");}
-		release_t(&emutex,&ebuffer,&ecv);
-		if(DEB){printf("CTRL-C: Elaborate buffer closed\n");}
-		wait_for(p_threads,npt);
-		if(DEB){printf("CTRL-C: All Print threads has stopped\n");}
-		dev_close(&fd);
-	}
-	cleanup();
-	exit(1);
+	return;
 	}
 
 
@@ -217,9 +251,6 @@ void catcher_SIGINT(int signum) {
 
 int main (int argc, char *argv[]){
 
-	int nrt = MAX_RT; /*	read threads	*/
-	int net = MAX_ET; /*	elaboration threads	*/
-	int npt = MAX_PT; /*	print threads	*/
 	int i;
 	int tmp_nrt = 0;
 	int tmp_net = 0;
@@ -241,6 +272,7 @@ int main (int argc, char *argv[]){
 
 	/* handle SIGINT	*/
 	signal(SIGINT, catcher_SIGINT);
+	control = 0;
 
 	/* Open Device	*/
 	dev_open(&fd);
@@ -292,14 +324,19 @@ int main (int argc, char *argv[]){
 
 	/*		Waiting for read_dev Thread	*/
 	wait_for(rthreads,nrt);
+	if(DEB){printf("Closing: All Read threads has stopped\n");}
 	release_t(&rmutex,&rbuffer,&rcv);
+	if(DEB){printf("Closing: Raw buffer closed\n");}
 
 	/*	Waiting for elaborate_data Thread	*/
 	wait_for(ethreads,net);
+	if(DEB){printf("Closing: All Elaborate threads has stopped\n");}
 	release_t(&emutex,&ebuffer,&ecv);
+	if(DEB){printf("Closing: Elaborate buffer closed\n");}
 
 	/*	Waiting for print Thread	*/
 	wait_for(p_threads,npt);
+	if(DEB){printf("Closing: All Write threads has stopped\n");}
 
 	/*	Close device	*/
 	dev_close(&fd);

@@ -2,11 +2,8 @@
 
 #include "fun.h"
 
-#define MAXL 40 /*	Max lenght of generater word (null-terminated string [0..39]+\0)	*/
-
 /* General purpose */
 
-/* Genereate a string with random letters */
 char* gen_data(){
 	int loop = (rand()%(MAXL-1))+1; /* Min size 1, Max size Maxl	*/
 	int i;
@@ -22,7 +19,6 @@ char* gen_data(){
 	return data;
 }
 
-/* Capital to non-capital */
 void to_lower(char* letters){
 	int i =0;
 	int tmp =0;
@@ -34,4 +30,13 @@ void to_lower(char* letters){
 	}
 }
 
-
+void to_upper(char* letters){
+	int i =0;
+	int tmp =0;
+	while(letters[i]!='\0'){
+		tmp = (int) letters[i];
+		tmp = tmp-32;
+		letters[i]=(char)tmp;
+		i++;
+			}
+}

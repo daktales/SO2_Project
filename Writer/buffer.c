@@ -10,7 +10,6 @@ void wbuf_init(wbuf* mybuffer){
 	mybuffer->tail = NULL;
 	mybuffer->count = 0;
 	mybuffer->done = 0;
-	mybuffer->todo = 0;
 }
 
 /* Inserts an element */
